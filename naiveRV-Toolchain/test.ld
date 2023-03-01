@@ -1,15 +1,24 @@
 OUTPUT_ARCH( "riscv" )
 ENTRY( _start )
 
+PROVIDE(__rom_size = 1K);
+PROVIDE(__ram_size = 1K);
+PROVIDE(__stack_size = 1K);
+
+PROVIDE(__rom_start = 0x10000000);
+PROVIDE(__ram_start = 0x20000000);
+PROVIDE(__ram_end = __ram_start + __ram_size);
+PROVIDE(__stack_start = __ram_end - __stack_size - 8);
+PROVIDE(__stack_end = __ram_end - 8);
+
 MEMORY
 {
 
-	rom (rxa) : ORIGIN = 0x10000000, LENGTH = 512K
-	ram (wxa) : ORIGIN = 0x20080000, LENGTH = 512K
+	rom (rxa) : ORIGIN = __rom_start, LENGTH = __rom_size
+	ram (wxa) : ORIGIN = __ram_start, LENGTH = __ram_size
 /*	rest (rxa) : ORIGIN = 0x30000000, LENGTH = 1M */
 }
 
-PROVIDE(__stack_size = 1K);
 
 SECTIONS
 {
@@ -23,10 +32,10 @@ SECTIONS
 	.text :
 	{
 		_text = .;
-		*crt0.o(.text)
+		*(.text)
 		*(.text.unlikely .text.unlikely.*)
 		*(.text.startup .text.startup.*)
-		*(.text)
+/*		*(.text) */
 		*(.text.*)
 		*(.gnu.linkonce.t.*)
 	} >rom AT>rom
@@ -119,12 +128,12 @@ SECTIONS
 
 	. = ALIGN(8);
 	_end = .;
-
+	PROVIDE(__heap_start = .);
+	. = __stack_start;
+	PROVIDE(__heap_end = .);
 	.stack :
 	{
-		. = ALIGN(16);
 		. += __stack_size;
-		. += 1K;
 		_stack_top = .;
 	} >ram AT>ram
 

@@ -22,13 +22,11 @@ _start:
   # Initialize global pointer
 .option push
 .option norelax
-#1:auipc gp, %pcrel_hi(__global_pointer$)
-#  addi  gp, gp, %pcrel_lo(1b)
   la gp,__global_pointer$
 .option pop
 
-  # Setup the stack pointer
-  la sp, _stack_top
+  # Initialize the stack pointer. From now on I can call regular functions.
+  la sp,_stack_top
 
   # when .data is stored in the ROM/Flash the location is marked by _data_lma
   # Then _data_lma is not 0, and the initial data is copied from
