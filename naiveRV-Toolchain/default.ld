@@ -69,6 +69,8 @@ SECTIONS
   .exception_ranges   : ONLY_IF_RO { *(.exception_ranges*) } >rom AT>rom
   .preinit_array    :
   {
+	_data = .;
+	_data_lma = LOADADDR(.preinit_array);
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array))
     PROVIDE_HIDDEN (__preinit_array_end = .);
