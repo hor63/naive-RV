@@ -1,5 +1,5 @@
 
-volatile long x = 0;
+long x = 222;
 volatile long y = 123;
 
 int main () {

@@ -136,6 +136,8 @@ begin
                     o_immediate <= j_immediate(i_instruction);
                 else
                     o_illegal_instruction <= '1';
+                    -- Avoid latch condition.
+                    o_immediate <= x"0000_0000";
                 end if;
 
             when b"1100011" => -- Conditional Branches

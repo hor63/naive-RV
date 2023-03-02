@@ -10,9 +10,11 @@ ENTRY(_start)
 SEARCH_DIR("/opt/riscv/riscv32-unknown-elf/lib");
 
 
-PROVIDE(__rom_size = 1M);
-PROVIDE(__ram_size = 1M);
-PROVIDE(__stack_size = 1K);
+PROVIDE(__rom_size = 10K);
+PROVIDE(__ram_size = 4K);
+
+PROVIDE(__heap_size = 0x200);
+PROVIDE(__stack_size = 0x200);
 
 PROVIDE(__rom_start = 0x10000000);
 PROVIDE(__ram_start = 0x20000000);
@@ -180,7 +182,7 @@ SECTIONS
 	.heap :
 	{
         __heap_start = .;
-        __heap_size = __ram_size - (__BSS_END__ - __ram_start) - __stack_size;
+/* use fixed value at the top       __heap_size = __ram_size - (__BSS_END__ - __ram_start) - __stack_size; */
 		. += __heap_size;
         __heap_end = .;
 	} >ram AT>ram
