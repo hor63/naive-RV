@@ -7,7 +7,7 @@ GHDL=ghdl-gcc
 GHDLFLAGS= --std=08
 
 # Default target
-all: naive_RV
+all: naive_RV dep
 
 dep:
 	$(GHDL) --gen-depends $(GHDLFLAGS) naive_RV > Makefile.dep

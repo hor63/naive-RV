@@ -3,7 +3,19 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
+use std.textio.all;
+
 package pkg_cpu_global is
+
+    --! \brief Logging with TEXTIO only for simulators.
+    --!
+    --! For synthesis the flag must be off since TEXTIO is not syntheziable.
+    constant c_enable_trace_glob: boolean := true;
+    --! \brief The logger text file.
+    --!
+    --! This one must *never* be used when \ref c_enable_trace_glob is false.
+    --! Otherwise you will not be able to synthesize the whole design.
+    file f_logger: text;
 
     --! \brief The CPU register width. This determines whether it is a 32-bit or 54-bit processor.
     --!

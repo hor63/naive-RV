@@ -3,6 +3,8 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
+use std.textio.all;
+
 use work.pkg_cpu_global.all;
 use work.pkg_cpu_register_file.all;
 use work.pkg_cpu_instruction_decoder.all;
@@ -81,7 +83,57 @@ is
     begin
         return resize(signed(i_instr(31) & i_instr(19 downto 12) & i_instr(20) & i_instr(30 downto 21) & '0') , XLEN);
     end function;
+
+    -- Logger string constants
+    constant c_str_comma: string := ", ";
+    constant c_str_eq: string := " = ";
+    constant c_str_ent_name: string := "------  rtl of ent_cpu_instruction_decoder ";
+    constant c_str_start: string := " start ----- ";
+    constant c_str_end: string := " end ----- ";
     
+    constant c_str_instruction: string := " l_instruction ";
+
+    constant c_str_opcode: string := " l_opcode ";
+    constant c_str_func3: string := " l_func3";
+    constant c_str_func7: string := " l_str_func7 ";
+    
+    constant c_str_immediate: string := " l_str_immediate ";
+            
+    constant c_str_dest_reg: string := " l_str_dest_reg ";
+    constant c_str_source_reg_1: string := " l_str_source_reg_1 ";
+    constant c_str_source_reg_2: string := " l_str_source_reg_2 ";
+    
+    constant c_str_enab_alu : string := " l_str_enab_alu ";
+    constant c_str_enab_shifter : string := " l_str_enab_shifter ";
+    constant c_str_enab_reg_load : string := " l_str_enab_reg_load ";
+    constant c_str_enab_load : string := " l_str_enab_load ";
+    constant c_str_enab_store : string := " l_str_enab_store ";
+    constant c_str_enab_jump : string := " l_str_enab_jump ";
+    constant c_str_enab_fence : string := " l_str_enab_fence ";
+    constant c_str_enab_system : string := " l_str_enab_system ";
+    
+    constant c_str_illegal_instruction : string := " l_str_illegal_instruction ";
+
+    procedure logger_out is
+        variable log_line: line;
+    begin
+    
+        write(log_line,c_str_ent_name);
+        write(log_line,c_str_start);
+        writeline(f_logger,log_line);
+    
+        write(log_line,c_str_instruction);
+        write(log_line,c_str_eq);
+        write(log_line,i_instruction);
+        write(log_line,c_str_eq);
+        hwrite(log_line,i_instruction);
+        writeline(f_logger,log_line);
+    
+        write(log_line,c_str_ent_name);
+        write(log_line,c_str_end);
+        writeline(f_logger,log_line);
+    
+    end procedure;
 begin
 
     process (i_instruction) is
@@ -183,6 +235,10 @@ begin
                 o_immediate <= x"0000_0000";
         end case;
         
+        if c_enable_trace_glob and c_enable_decoder_trace
+        then
+            logger_out;
+        end if;
         
     end process;
     
