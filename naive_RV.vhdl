@@ -19,7 +19,7 @@ is
 
     
 
-    signal l_instruction: t_instruction_std_word;
+    signal l_instruction: t_instruction_std_word := x"00000000";
 
     signal l_opcode: t_opcode;
     signal l_func3: t_func3;
@@ -42,6 +42,12 @@ is
     
     signal l_illegal_instruction: std_logic;
 -- end interface to the decoder
+
+    function get_string (i_str: string) return string
+    is
+    begin
+        return i_str;
+    end function;
 
 begin
 
@@ -66,7 +72,9 @@ begin
             o_enab_store => l_enab_store,
             o_enab_jump => l_enab_jump,
             o_enab_fence => l_enab_fence,
-            o_enab_system => l_enab_system
+            o_enab_system => l_enab_system,
+
+            o_illegal_instruction => l_illegal_instruction
             );
         
 
@@ -83,6 +91,69 @@ begin
         wait for 10 ns;
         l_instruction <= x"10001197";
         wait for 10 ns;
+--        if c_enable_trace_glob and c_enable_decoder_trace
+--        then
+            write(log_line,get_string(" l_immediate = "));
+            write(log_line,l_immediate);
+            write(log_line,get_string(" = "));
+            hwrite(log_line,l_immediate);
+            writeline(f_logger,log_line);
+
+            write(log_line,get_string(" l_dest_reg = "));
+            write(log_line,l_dest_reg);
+            write(log_line,get_string(" = "));
+            hwrite(log_line,l_dest_reg);
+            writeline(f_logger,log_line);
+
+            write(log_line,get_string(" l_source_reg_1 = "));
+            write(log_line,l_source_reg_1);
+            write(log_line,get_string(" = "));
+            hwrite(log_line,l_source_reg_1);
+            writeline(f_logger,log_line);
+
+            write(log_line,get_string(" l_source_reg_2 = "));
+            write(log_line,l_source_reg_2);
+            write(log_line,get_string(" = "));
+            hwrite(log_line,l_source_reg_2);
+            writeline(f_logger,log_line);
+
+            write(log_line,get_string(" l_enab_alu = "));
+            write(log_line,l_enab_alu);
+            writeline(f_logger,log_line);
+
+            write(log_line,get_string(" l_enab_shifter = "));
+            write(log_line,l_enab_shifter);
+            writeline(f_logger,log_line);
+
+            write(log_line,get_string(" l_enab_reg_load = "));
+            write(log_line,l_enab_reg_load);
+            writeline(f_logger,log_line);
+
+            write(log_line,get_string(" l_enab_load = "));
+            write(log_line,l_enab_load);
+            writeline(f_logger,log_line);
+
+            write(log_line,get_string(" l_enab_store = "));
+            write(log_line,l_enab_store);
+            writeline(f_logger,log_line);
+
+            write(log_line,get_string(" l_enab_jump = "));
+            write(log_line,l_enab_jump);
+            writeline(f_logger,log_line);
+
+            write(log_line,get_string(" l_enab_fence = "));
+            write(log_line,l_enab_fence);
+            writeline(f_logger,log_line);
+
+            write(log_line,get_string(" l_enab_system = "));
+            write(log_line,l_enab_system);
+            writeline(f_logger,log_line);
+
+            write(log_line,get_string(" l_illegal_instruction  = "));
+            write(log_line,l_illegal_instruction);
+            writeline(f_logger,log_line);
+
+--        end if;
         st := "End  ";
         write(log_line,st);
         writeline(f_logger,log_line);
