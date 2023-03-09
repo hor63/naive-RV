@@ -85,77 +85,45 @@ begin
     begin
         file_open(f_logger,"./naive_RV.log",write_mode);
         
-        write(log_line,c_str_start);
+        write(log_line,get_string("Start program"));
         writeline(f_logger,log_line);
         
         wait for 10 ns;
+        write(log_line,get_string("auipc   gp,0x10001"));
+        writeline(f_logger,log_line);
         l_instruction <= x"10001197";
         wait for 10 ns;
---        if c_enable_trace_glob and c_enable_decoder_trace
---        then
-            write(log_line,get_string(" l_immediate = "));
-            write(log_line,l_immediate);
-            write(log_line,get_string(" = "));
-            hwrite(log_line,l_immediate);
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" l_dest_reg = "));
-            write(log_line,l_dest_reg);
-            write(log_line,get_string(" = "));
-            hwrite(log_line,l_dest_reg);
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" l_source_reg_1 = "));
-            write(log_line,l_source_reg_1);
-            write(log_line,get_string(" = "));
-            hwrite(log_line,l_source_reg_1);
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" l_source_reg_2 = "));
-            write(log_line,l_source_reg_2);
-            write(log_line,get_string(" = "));
-            hwrite(log_line,l_source_reg_2);
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" l_enab_alu = "));
-            write(log_line,l_enab_alu);
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" l_enab_shifter = "));
-            write(log_line,l_enab_shifter);
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" l_enab_reg_load = "));
-            write(log_line,l_enab_reg_load);
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" l_enab_load = "));
-            write(log_line,l_enab_load);
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" l_enab_store = "));
-            write(log_line,l_enab_store);
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" l_enab_jump = "));
-            write(log_line,l_enab_jump);
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" l_enab_fence = "));
-            write(log_line,l_enab_fence);
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" l_enab_system = "));
-            write(log_line,l_enab_system);
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" l_illegal_instruction  = "));
-            write(log_line,l_illegal_instruction);
-            writeline(f_logger,log_line);
-
---        end if;
-        st := "End  ";
-        write(log_line,st);
+        write(log_line,get_string("add     gp,gp,-2040"));
+        writeline(f_logger,log_line);
+        l_instruction <= x"80818193";
+        wait for 10 ns;
+        write(log_line,get_string("beq     t0,t1,10000040"));
+        writeline(f_logger,log_line);
+        l_instruction <= x"02628263";
+        wait for 10 ns;
+        write(log_line,get_string("beqz    t0,10000040"));
+        writeline(f_logger,log_line);
+        l_instruction <= x"02028063";
+        wait for 10 ns;
+        write(log_line,get_string("bgeu    t1,t2,10000040"));
+        writeline(f_logger,log_line);
+        l_instruction <= x"00737c63";
+        wait for 10 ns;
+        write(log_line,get_string("lw      t3,0(t0)"));
+        writeline(f_logger,log_line);
+        l_instruction <= x"0002ae03";
+        wait for 10 ns;
+        write(log_line,get_string("sw      t3,0(t1)"));
+        writeline(f_logger,log_line);
+        l_instruction <= x"01c32023";
+        wait for 10 ns;
+        write(log_line,get_string("jal     10000234"));
+        writeline(f_logger,log_line);
+        l_instruction <= x"1e4000ef";
+        wait for 10 ns;
+        
+        
+        write(log_line,get_string("End program"));
         writeline(f_logger,log_line);
         file_close(f_logger);
         wait;

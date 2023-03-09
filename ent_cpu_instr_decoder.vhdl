@@ -1,9 +1,9 @@
-
 library IEEE;
-use IEEE.std_logic_1164.all;
-use IEEE.numeric_std.all;
 
 use std.textio.all;
+
+use IEEE.std_logic_1164.all;
+use IEEE.numeric_std.all;
 
 use work.pkg_cpu_global.all;
 use work.pkg_cpu_register_file.all;
@@ -108,36 +108,26 @@ begin
         variable l_enab_fence: std_logic;
         variable l_enab_system: std_logic;
 
-        variable l_illegal_instruction: std_logic
+        variable l_illegal_instruction: std_logic;
 
         variable log_line: line;
     begin
     
-        o_opcode <= a_opcode;
-        o_func3 <= a_func3;
-        o_func7 <= a_func7;
-           
         -- Set the register addresses unconditionally.
         -- It saves me some circuitry here.
         -- Their use depends on the operational block which is enabled.
-        o_dest_reg <= i_instruction(11 downto 7);
-        o_source_reg_1 <= i_instruction(19 downto 15);
-        o_source_reg_2 <= i_instruction(24 downto 20);
+        l_dest_reg := i_instruction(11 downto 7);
+        l_source_reg_1 := i_instruction(19 downto 15);
+        l_source_reg_2 := i_instruction(24 downto 20);
         
         if c_enable_trace_glob and c_enable_decoder_trace
         then
             write(log_line,get_string("------  rtl of ent_cpu_instruction_decoder start -------"));
             writeline(f_logger,log_line);
-            write(log_line,get_string("  i_instruction = "));
+            write(log_line,get_string(" i_instruction = "));
             write(log_line,i_instruction);
             write(log_line,get_string(" = "));
             hwrite(log_line,i_instruction);
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" a_opcode = "));
-            write(log_line,a_opcode);
-            write(log_line,get_string(" = "));
-            hwrite(log_line,a_opcode);
             writeline(f_logger,log_line);
 
             write(log_line,get_string(" a_func3 = "));
@@ -152,159 +142,246 @@ begin
             hwrite(log_line,a_func7);
             writeline(f_logger,log_line);
 
+            write(log_line,get_string(" a_opcode = "));
+            write(log_line,a_opcode);
+            write(log_line,get_string(" = "));
+            hwrite(log_line,a_opcode);
+            writeline(f_logger,log_line);
+
         end if;
 
-        o_enab_alu <= '0';
-        o_enab_shifter <= '0';
-        o_enab_reg_load <= '0';
-        o_enab_load <= '0';
-        o_enab_store <= '0';
-        o_enab_jump <= '0';
-        o_enab_fence <= '0';
-        o_enab_system <= '0';
-        o_illegal_instruction <= '0';
+        l_enab_alu := '0';
+        l_enab_shifter := '0';
+        l_enab_reg_load := '0';
+        l_enab_load := '0';
+        l_enab_store := '0';
+        l_enab_jump := '0';
+        l_enab_fence := '0';
+        l_enab_system := '0';
+        l_illegal_instruction := '0';
+        l_immediate := x"0000_0000";
 
         -- 1st level: The opcode determines the basic type of instruction, and the instruction word structure.
         case a_opcode is
             when b"0110111" => -- LUI
-                o_enab_reg_load <= '1';
-                o_immediate <= u_immediate(i_instruction);
+                if c_enable_trace_glob and c_enable_decoder_trace
+                then
+                    write(log_line,get_string("  opcode means  LUI"));
+                    writeline(f_logger,log_line);
+                end if;
+
+                l_enab_reg_load := '1';
+                l_immediate := u_immediate(i_instruction);
             
             when b"0010111" => -- AUIPC
-                o_enab_reg_load <= '1';
-                o_immediate <= u_immediate(i_instruction);
+                if c_enable_trace_glob and c_enable_decoder_trace
+                then
+                    write(log_line,get_string("  opcode means  AUIPC"));
+                    writeline(f_logger,log_line);
+                end if;
+
+                l_enab_reg_load := '1';
+                l_immediate := u_immediate(i_instruction);
             
             when b"1101111" => -- JAL
-                o_enab_jump <= '1';
-                o_immediate <= j_immediate(i_instruction);
+                if c_enable_trace_glob and c_enable_decoder_trace
+                then
+                    write(log_line,get_string("  opcode means  JAL"));
+                    writeline(f_logger,log_line);
+                end if;
+
+                l_enab_jump := '1';
+                l_immediate := j_immediate(i_instruction);
             
             when b"1100111" => -- JALR
+                if c_enable_trace_glob and c_enable_decoder_trace
+                then
+                    write(log_line,get_string("  opcode means  JALR"));
+                    writeline(f_logger,log_line);
+                end if;
+
                 if a_func3 = b"000" then
-                    o_enab_jump <= '1';
-                    o_immediate <= j_immediate(i_instruction);
+                    l_enab_jump := '1';
+                    l_immediate := j_immediate(i_instruction);
                 else
-                    o_illegal_instruction <= '1';
-                    -- Avoid latch condition.
-                    o_immediate <= x"0000_0000";
+                    l_illegal_instruction := '1';
                 end if;
 
             when b"1100011" => -- Conditional Branches
-                o_enab_jump <= '1';
-                o_immediate <= b_immediate(i_instruction);
+                if c_enable_trace_glob and c_enable_decoder_trace
+                then
+                    write(log_line,get_string("  opcode means  Conditional Branches"));
+                    writeline(f_logger,log_line);
+                end if;
+
+                l_enab_jump := '1';
+                l_immediate := b_immediate(i_instruction);
             
             when b"0000011" => -- Load
-                o_enab_load <= '1';
-                o_immediate <= i_immediate(i_instruction);
+                if c_enable_trace_glob and c_enable_decoder_trace
+                then
+                    write(log_line,get_string("  opcode means  Load"));
+                    writeline(f_logger,log_line);
+                end if;
+
+                l_enab_load := '1';
+                l_immediate := i_immediate(i_instruction);
             
             when b"0100011" => -- Store
-                o_enab_store <= '1';
-                o_immediate <= s_immediate(i_instruction);
+                if c_enable_trace_glob and c_enable_decoder_trace
+                then
+                    write(log_line,get_string("  opcode means  Store"));
+                    writeline(f_logger,log_line);
+                end if;
+
+                l_enab_store := '1';
+                l_immediate := s_immediate(i_instruction);
             
             when b"0010011" => -- OP-Immediate
-                if a_func3 = b"001" or a_func3 = b"101" then
-                    o_enab_shifter <= '1';
-                else
-                    o_enab_alu <= '1';
+                if c_enable_trace_glob and c_enable_decoder_trace
+                then
+                    write(log_line,get_string("  opcode means  OP-Immediate"));
+                    writeline(f_logger,log_line);
                 end if;
-                o_immediate <= i_immediate(i_instruction);
+
+                if a_func3 = b"001" or a_func3 = b"101" then
+                    l_enab_shifter := '1';
+                else
+                    l_enab_alu := '1';
+                end if;
+                l_immediate := i_immediate(i_instruction);
             
             when b"0110011" => -- OP
-                if a_func3 = b"001" or a_func3 = b"101" then
-                    o_enab_shifter <= '1';
-                else
-                    o_enab_alu <= '1';
+                if c_enable_trace_glob and c_enable_decoder_trace
+                then
+                    write(log_line,get_string("  opcode means  OP"));
+                    writeline(f_logger,log_line);
                 end if;
-                -- Avoid latch condition.
-                o_immediate <= x"0000_0000";
+
+                if a_func3 = b"001" or a_func3 = b"101" then
+                    l_enab_shifter := '1';
+                else
+                    l_enab_alu := '1';
+                end if;
             
             when b"0001111" => -- MISC-MEM/Fence
-                o_enab_fence <= '0';
-                o_immediate <= i_immediate(i_instruction);
+                if c_enable_trace_glob and c_enable_decoder_trace
+                then
+                    write(log_line,get_string("  opcode means  MISC-MEM/Fence"));
+                    writeline(f_logger,log_line);
+                end if;
+
+                l_enab_fence := '0';
+                l_immediate := i_immediate(i_instruction);
             
             when "1110011" => -- SYSTEM/ ECALL-EBREAK
-                o_enab_system <= '0';
-                o_immediate <= i_immediate(i_instruction);
+                if c_enable_trace_glob and c_enable_decoder_trace
+                then
+                    write(log_line,get_string("  opcode means  SYSTEM/ ECALL-EBREAK"));
+                    writeline(f_logger,log_line);
+                end if;
+
+                l_enab_system := '0';
+                l_immediate := i_immediate(i_instruction);
             
             when others =>
-                o_illegal_instruction <= '1';
-                -- Avoid latch condition.
-                o_immediate <= x"0000_0000";
+                if c_enable_trace_glob and c_enable_decoder_trace
+                then
+                    write(log_line,get_string("  opcode means  Illegal instruction"));
+                    writeline(f_logger,log_line);
+                end if;
+
+                l_illegal_instruction := '1';
         end case;
 
         if c_enable_trace_glob and c_enable_decoder_trace
         then
-            write(log_line,get_string("a_opcode = b""0010111"" = "));
-            write(log_line,a_opcode = b"0010111");
-            writeline(f_logger,log_line);
-
-            write(log_line,get_string(" o_immediate = "));
-            write(log_line,o_immediate);
+            write(log_line,get_string(" l_immediate = "));
+            write(log_line,l_immediate);
             write(log_line,get_string(" = "));
-            hwrite(log_line,o_immediate);
+            hwrite(log_line,l_immediate);
             writeline(f_logger,log_line);
 
-            write(log_line,get_string(" o_dest_reg = "));
-            write(log_line,o_dest_reg);
+            write(log_line,get_string(" l_dest_reg = "));
+            write(log_line,l_dest_reg);
             write(log_line,get_string(" = "));
-            hwrite(log_line,o_dest_reg);
+            hwrite(log_line,l_dest_reg);
             writeline(f_logger,log_line);
 
-            write(log_line,get_string(" o_source_reg_1 = "));
-            write(log_line,o_source_reg_1);
+            write(log_line,get_string(" l_source_reg_1 = "));
+            write(log_line,l_source_reg_1);
             write(log_line,get_string(" = "));
-            hwrite(log_line,o_source_reg_1);
+            hwrite(log_line,l_source_reg_1);
             writeline(f_logger,log_line);
 
-            write(log_line,get_string(" o_source_reg_2 = "));
-            write(log_line,o_source_reg_2);
+            write(log_line,get_string(" l_source_reg_2 = "));
+            write(log_line,l_source_reg_2);
             write(log_line,get_string(" = "));
-            hwrite(log_line,o_source_reg_2);
+            hwrite(log_line,l_source_reg_2);
             writeline(f_logger,log_line);
 
-            write(log_line,get_string(" o_enab_alu = "));
-            write(log_line,o_enab_alu);
+            write(log_line,get_string(" l_enab_alu = "));
+            write(log_line,l_enab_alu);
             writeline(f_logger,log_line);
 
-            write(log_line,get_string(" o_enab_shifter = "));
-            write(log_line,o_enab_shifter);
+            write(log_line,get_string(" l_enab_shifter = "));
+            write(log_line,l_enab_shifter);
             writeline(f_logger,log_line);
 
-            write(log_line,get_string(" o_enab_reg_load = "));
-            write(log_line,o_enab_reg_load);
+            write(log_line,get_string(" l_enab_reg_load = "));
+            write(log_line,l_enab_reg_load);
             writeline(f_logger,log_line);
 
             writeline(f_logger,log_line);
 
-            write(log_line,get_string(" o_enab_load = "));
-            write(log_line,o_enab_load);
+            write(log_line,get_string(" l_enab_load = "));
+            write(log_line,l_enab_load);
             writeline(f_logger,log_line);
 
-            write(log_line,get_string(" o_enab_store = "));
-            write(log_line,o_enab_store);
+            write(log_line,get_string(" l_enab_store = "));
+            write(log_line,l_enab_store);
             writeline(f_logger,log_line);
 
-            write(log_line,get_string(" o_enab_jump = "));
-            write(log_line,o_enab_jump);
+            write(log_line,get_string(" l_enab_jump = "));
+            write(log_line,l_enab_jump);
             writeline(f_logger,log_line);
 
-            write(log_line,get_string(" o_enab_fence = "));
-            write(log_line,o_enab_fence);
+            write(log_line,get_string(" l_enab_fence = "));
+            write(log_line,l_enab_fence);
             writeline(f_logger,log_line);
 
-            write(log_line,get_string(" o_enab_system = "));
-            write(log_line,o_enab_system);
+            write(log_line,get_string(" l_enab_system = "));
+            write(log_line,l_enab_system);
             writeline(f_logger,log_line);
 
-            write(log_line,get_string(" o_illegal_instruction  = "));
-            write(log_line,o_illegal_instruction);
+            write(log_line,get_string(" l_illegal_instruction  = "));
+            write(log_line,l_illegal_instruction);
             writeline(f_logger,log_line);
 
-            write(log_line,get_string("------  rtl of ent_cpu_instruction_decoder end -------"));
-            writeline(f_logger,log_line);
             write(log_line,get_string("------  rtl of ent_cpu_instruction_decoder end -------"));
             writeline(f_logger,log_line);
         end if;
 
+        o_opcode <= a_opcode;
+        o_func3 <= a_func3 ;
+        o_func7 <= a_func7 ;
+
+        o_immediate <= l_immediate ;
+
+        o_dest_reg <= l_dest_reg ;
+        o_source_reg_1 <= l_source_reg_1 ;
+        o_source_reg_2 <= l_source_reg_2 ;
+
+        o_enab_alu <= l_enab_alu ;
+        o_enab_shifter <= l_enab_shifter ;
+        o_enab_reg_load <= l_enab_reg_load ;
+        o_enab_load <= l_enab_load ;
+        o_enab_store <= l_enab_store ;
+        o_enab_jump <= l_enab_jump ;
+        o_enab_fence <= l_enab_fence ;
+        o_enab_system <= l_enab_system ;
+
+        o_illegal_instruction <= l_illegal_instruction ;
 
     end process;
     

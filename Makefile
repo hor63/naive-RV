@@ -3,8 +3,8 @@
 # Command used to generate this makefile:
 # ghdl-gcc --gen-makefile --std=08 --work=cpu_register_file naive_RV
 
-GHDL=ghdl-gcc
-GHDLFLAGS= --std=08
+GHDL?=ghdl-gcc
+GHDLFLAGS+= --std=08
 
 # Default target
 all: naive_RV dep
@@ -13,8 +13,8 @@ dep:
 	$(GHDL) --gen-depends $(GHDLFLAGS) naive_RV > Makefile.dep
 
 # Elaboration target
-naive_RV: pkg_cpu_global.o pkg_cpu_register_file.o ent_cpu_register_file.o \
-	pkg_cpu_instr_decoder.o ent_cpu_instr_decoder.o \
+naive_RV: pkg_cpu_global.o pkg_cpu_register_file.o pkg_cpu_instr_decoder.o pkg_memory_rom.o \
+	ent_cpu_register_file.o ent_cpu_instr_decoder.o ent_memory_rom.o\
 	naive_RV.o
 	$(GHDL) -e $(GHDLFLAGS) $@
 
@@ -28,9 +28,13 @@ pkg_cpu_register_file.o: pkg_cpu_register_file.vhdl
 	$(GHDL) -a $(GHDLFLAGS) $<
 pkg_cpu_instr_decoder.o: pkg_cpu_instr_decoder.vhdl
 	$(GHDL) -a $(GHDLFLAGS) $<
+pkg_memory_rom.o: pkg_memory_rom.vhdl
+	$(GHDL) -a $(GHDLFLAGS) $<
 ent_cpu_register_file.o: ent_cpu_register_file.vhdl
 	$(GHDL) -a $(GHDLFLAGS) $<
 ent_cpu_instr_decoder.o: ent_cpu_instr_decoder.vhdl
+	$(GHDL) -a $(GHDLFLAGS) $<
+ent_memory_rom.o: ent_memory_rom.vhdl
 	$(GHDL) -a $(GHDLFLAGS) $<
 
 naive_RV.o: naive_RV.vhdl
