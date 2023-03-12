@@ -8,7 +8,10 @@ use work.pkg_cpu_register_file.all;
 
 package pkg_memory_rom is
 
-    constant c_memory_word_width: natural := 16;
+    constant c_memory_word_bytes: natural := 2;
+    constant c_memory_word_width: natural := c_memory_word_bytes * 8;
+    constant c_mem_rom_num_bytes: natural := 2*1024;
+    constant c_mem_rom_start_address: unsigned (31 downto 0) := x"10000000";
 
     type enu_memory_access_width is (
         c_memory_access_8_bit,
@@ -19,16 +22,25 @@ package pkg_memory_rom is
 
     component ent_memory_rom
     is
-        
-        port(
-            i_clk: in std_logic;
-            i_write_enable: in std_logic;
-            i_write_reg_addr: in t_cpu_register_address;
-            i_reg_val: in t_cpu_word;
-            
-            i_read_reg_addrs: in t_read_reg_addrs;
-            o_reg_vals: out t_out_reg_vals
+        generic (
+            gen_hex_file: string := "./test.hex"
         );
+
+        port (
+            i_clock: in std_logic;
+
+            i_reset: in std_logic;
+            o_reset_done: out std_logic;
+
+            i_request: in std_logic;
+            i_addr:    in t_cpu_word;
+            i_read_width: in enu_memory_access_width;
+
+            o_data: out t_cpu_word;
+            o_data_ready: out std_logic;
+            o_alignment_error: out std_logic;
+            o_out_of_address_range_error: out std_logic
+            );
     end component ent_memory_rom;
 
 end pkg_memory_rom;

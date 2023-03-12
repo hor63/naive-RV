@@ -4,5 +4,7 @@
 *.d
 *.cf
 *.dep
+*.hex
+*.ghw
 
 naive_rv

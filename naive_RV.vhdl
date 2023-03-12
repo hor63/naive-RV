@@ -1,13 +1,15 @@
-
 library IEEE;
+
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
 use std.textio.all;
+use std.env.finish;
 
 use work.pkg_cpu_global.all;
 use work.pkg_cpu_register_file.all;
 use work.pkg_cpu_instruction_decoder.all;
+use work.pkg_memory_rom.all;
 
 entity naive_RV is
 end naive_RV;
@@ -15,10 +17,11 @@ end naive_RV;
 architecture testbench of naive_RV
 is
 
+    signal l_clock: std_logic;
+    signal l_reset: std_logic;
+
+
 -- start interface to the decoder
-
-    
-
     signal l_instruction: t_instruction_std_word := x"00000000";
 
     signal l_opcode: t_opcode;
@@ -42,6 +45,19 @@ is
     
     signal l_illegal_instruction: std_logic;
 -- end interface to the decoder
+
+-- start interface to the ROM
+    signal l_mem_rom_reset_done: std_logic;
+
+    signal l_request: std_logic;
+    signal l_addr:    t_cpu_word;
+    signal l_read_width: enu_memory_access_width;
+
+    signal l_data: t_cpu_word;
+    signal l_data_ready: std_logic;
+    signal l_alignment_error: std_logic;
+    signal l_out_of_address_range_error: std_logic;
+-- end
 
     function get_string (i_str: string) return string
     is
@@ -76,7 +92,31 @@ begin
 
             o_illegal_instruction => l_illegal_instruction
             );
-        
+
+      l_memory_rom: ent_memory_rom
+        port map (
+            i_clock => l_clock,
+
+            i_reset => l_reset,
+            o_reset_done => l_mem_rom_reset_done,
+
+            i_request => l_request,
+            i_addr => l_addr,
+            i_read_width => l_read_width,
+
+            o_data => l_data,
+            o_data_ready => l_data_ready,
+            o_alignment_error => l_alignment_error,
+            o_out_of_address_range_error => l_out_of_address_range_error
+            );
+
+    clock_gen: process is
+    begin
+        l_clock <= '0';
+        wait for 5 ns;
+        l_clock <= '1';
+        wait for 5 ns;
+    end process;
 
     rb: process is   
         variable log_line: line;
@@ -87,8 +127,15 @@ begin
         
         write(log_line,get_string("Start program"));
         writeline(f_logger,log_line);
-        
+
         wait for 10 ns;
+
+        l_reset <= '1';
+        wait for 30 ns;
+        l_reset <= '0';
+
+        wait until l_mem_rom_reset_done = '1';
+
         write(log_line,get_string("auipc   gp,0x10001"));
         writeline(f_logger,log_line);
         l_instruction <= x"10001197";
@@ -122,10 +169,12 @@ begin
         l_instruction <= x"1e4000ef";
         wait for 10 ns;
         
-        
         write(log_line,get_string("End program"));
         writeline(f_logger,log_line);
         file_close(f_logger);
+        wait for 10 ns;
+
+        finish;
         wait;
     end process;
 
