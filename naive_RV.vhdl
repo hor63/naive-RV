@@ -112,9 +112,9 @@ begin
 
     clock_gen: process is
     begin
-        l_clock <= '0';
-        wait for 5 ns;
         l_clock <= '1';
+        wait for 5 ns;
+        l_clock <= '0';
         wait for 5 ns;
     end process;
 
@@ -131,10 +131,89 @@ begin
         wait for 10 ns;
 
         l_reset <= '1';
+        l_request <= '0';
         wait for 30 ns;
         l_reset <= '0';
 
         wait until l_mem_rom_reset_done = '1';
+        -- wait until l_clock = '1';
+        wait for 10 ns;
+        l_addr <= x"10000008";
+        l_read_width <= c_memory_access_32_bit;
+        l_request <= '1';
+        wait for 10 ns;
+        l_request <= '0';
+        wait for 30 ns;
+
+        l_addr <= x"10000001";
+        l_read_width <= c_memory_access_32_bit;
+        l_request <= '1';
+        wait for 10 ns;
+        l_request <= '0';
+        wait for 30 ns;
+
+        l_addr <= x"10000000";
+        l_read_width <= c_memory_access_32_bit;
+        l_request <= '1';
+        wait for 10 ns;
+        l_request <= '0';
+        wait for 30 ns;
+
+        l_request <= '1';
+        l_addr <= x"10000000";
+        l_read_width <= c_memory_access_16_bit;
+        wait for 10 ns;
+        l_request <= '0';
+        wait for 30 ns;
+        
+        l_request <= '1';
+        l_addr <= x"10000002";
+        l_read_width <= c_memory_access_16_bit;
+        wait for 10 ns;
+        l_request <= '0';
+        wait for 30 ns;
+        
+        l_request <= '1';
+        l_addr <= x"10000001";
+        l_read_width <= c_memory_access_16_bit;
+        wait for 10 ns;
+        l_request <= '0';
+        wait for 30 ns;
+
+        l_request <= '1';
+        l_addr <= x"10000000";
+        l_read_width <= c_memory_access_8_bit;
+        wait for 10 ns;
+        l_request <= '0';
+        wait for 30 ns;
+
+        l_request <= '1';
+        l_addr <= x"10000001";
+        l_read_width <= c_memory_access_8_bit;
+        wait for 10 ns;
+        l_request <= '0';
+        wait for 30 ns;
+
+        l_request <= '1';
+        l_addr <= x"10000002";
+        l_read_width <= c_memory_access_8_bit;
+        wait for 10 ns;
+        l_request <= '0';
+        wait for 30 ns;
+
+        l_request <= '1';
+        l_addr <= x"10000003";
+        l_read_width <= c_memory_access_8_bit;
+        wait for 10 ns;
+        l_request <= '0';
+        wait for 30 ns;
+
+        l_request <= '1';
+        l_addr <= x"10000004";
+        l_read_width <= c_memory_access_8_bit;
+        wait for 10 ns;
+        l_request <= '0';
+        wait for 30 ns;
 
         write(log_line,get_string("auipc   gp,0x10001"));
         writeline(f_logger,log_line);

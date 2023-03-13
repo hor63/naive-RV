@@ -13,11 +13,6 @@ package pkg_memory_rom is
     constant c_mem_rom_num_bytes: natural := 2*1024;
     constant c_mem_rom_start_address: unsigned (31 downto 0) := x"10000000";
 
-    type enu_memory_access_width is (
-        c_memory_access_8_bit,
-        c_memory_access_16_bit,
-        c_memory_access_32_bit);
-    
     subtype t_memory_word is unsigned(c_memory_word_width-1 downto 0);
 
     component ent_memory_rom

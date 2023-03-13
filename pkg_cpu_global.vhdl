@@ -48,4 +48,12 @@ package pkg_cpu_global is
     subtype t_func3 is unsigned (c_func3_len-1 downto 0);
     subtype t_func7 is unsigned (c_func7_len-1 downto 0);
     
+    -- memory access width. Used by ROM as well as RAM
+    type enu_memory_access_width is (
+        c_memory_access_8_bit,
+        c_memory_access_16_bit,
+        c_memory_access_32_bit);
+    
+
+    
 end pkg_cpu_global;

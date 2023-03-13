@@ -177,8 +177,8 @@ architecture rtl of ent_memory_rom is
 begin
 
     process  ( i_clock) is
-        variable l_data_ready: std_logic;
-        variable l_alignment_error: std_logic;
+        -- variable l_data_ready: std_logic;
+        -- variable l_alignment_error: std_logic;
     
         variable mem_array_addr: unsigned (31 downto 0);
         variable mem_array_index: integer;
@@ -194,6 +194,11 @@ begin
                 then
                     o_reset_done <= '0';
                     l_status <= L_RESET;
+                    o_data <= (others => '0');
+                    o_data_ready <= '0';
+                    o_alignment_error <= '0';
+                    o_out_of_address_range_error <= '0';
+                    
                     load_memory (l_mem_array);
                 end if;
             else -- if i_reset
@@ -248,8 +253,13 @@ begin
                                 end if;
                         end case;
                     else -- if i_request
-                        l_status <= L_IDLE;
-                        o_data_ready <= '0';
+                        if l_status = L_DONE
+                        then
+                            l_status <= L_IDLE;
+                            o_data_ready <= '0';
+                            o_alignment_error <= '0';
+                            o_data <= x"00000000";
+                        end if;
                     end if; -- if i_request
                 when L_GET_FIRST_MEM_WORD =>
                     o_data_ready <= '1';
