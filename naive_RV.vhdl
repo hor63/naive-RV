@@ -10,6 +10,7 @@ use work.pkg_cpu_global.all;
 use work.pkg_cpu_register_file.all;
 use work.pkg_cpu_instruction_decoder.all;
 use work.pkg_memory_rom.all;
+use work.pkg_memory_ram.all;
 
 entity naive_RV is
 end naive_RV;
@@ -47,16 +48,40 @@ is
 -- end interface to the decoder
 
 -- start interface to the ROM
-    signal l_mem_rom_reset_done: std_logic;
+    signal l_rom_mem_rom_reset_done: std_logic;
 
-    signal l_request: std_logic;
-    signal l_addr:    t_cpu_word;
-    signal l_read_width: enu_memory_access_width;
+    signal l_rom_request: std_logic;
+    signal l_rom_addr:    t_cpu_word;
+    signal l_rom_read_width: enu_memory_access_width;
 
-    signal l_data: t_cpu_word;
-    signal l_data_ready: std_logic;
-    signal l_alignment_error: std_logic;
-    signal l_out_of_address_range_error: std_logic;
+    signal l_rom_data: t_cpu_word;
+    signal l_rom_data_ready: std_logic;
+    signal l_rom_alignment_error: std_logic;
+    signal l_rom_out_of_address_range_error: std_logic;
+-- end
+
+-- start interface to the RAM
+    signal l_ram_mem_rom_reset_done: std_logic;
+
+    signal l_ram_read_request: std_logic;
+    signal l_ram_read_addr:    t_cpu_word;
+    signal l_ram_read_width: enu_memory_access_width;
+
+    signal l_ram_read_data: t_cpu_word;
+    signal l_ram_read_data_ready: std_logic;
+    signal l_ram_read_alignment_error: std_logic;
+    signal l_ram_read_out_of_address_range_error: std_logic;
+    
+    -- the write interface section
+    signal l_ram_write_request: std_logic;
+    signal l_ram_write_addr:    t_cpu_word;
+    signal l_ram_write_width: enu_memory_access_width;
+    signal l_ram_write_data: t_cpu_word;
+    
+    signal l_ram_write_data_ready: std_logic;
+    signal l_ram_write_alignment_error: std_logic;
+    signal l_ram_write_out_of_address_range_error: std_logic;
+
 -- end
 
     function get_string (i_str: string) return string
@@ -93,21 +118,46 @@ begin
             o_illegal_instruction => l_illegal_instruction
             );
 
-      l_memory_rom: ent_memory_rom
-        port map (
+    l_memory_rom: ent_memory_rom
+    port map (
+        i_clock => l_clock,
+
+        i_reset => l_reset,
+        o_reset_done => l_rom_mem_rom_reset_done,
+
+        i_request => l_rom_request,
+        i_addr => l_rom_addr,
+        i_read_width => l_rom_read_width,
+
+        o_data => l_rom_data,
+        o_data_ready => l_rom_data_ready,
+        o_alignment_error => l_rom_alignment_error,
+        o_out_of_address_range_error => l_rom_out_of_address_range_error
+        );
+            
+    l_memory_ram: ent_memory_ram
+        port map(
             i_clock => l_clock,
 
-            i_reset => l_reset,
-            o_reset_done => l_mem_rom_reset_done,
+            -- the read interface section
+            i_read_request => l_ram_read_request ,
+            i_read_addr => l_ram_read_addr ,
+            i_read_width => l_ram_read_width ,
+            o_read_data => l_ram_read_data ,
+            o_read_data_ready => l_ram_read_data_ready ,
+            o_read_alignment_error => l_ram_read_alignment_error ,
+            o_read_out_of_address_range_error => l_ram_read_out_of_address_range_error ,
+            
+            -- the write interface section
+            i_write_request => l_ram_write_request ,
+            i_write_addr => l_ram_write_addr ,
+            i_write_width => l_ram_write_width ,
+            i_write_data => l_ram_write_data ,
+            
+            o_write_data_ready => l_ram_write_data_ready ,
+            o_write_alignment_error => l_ram_write_alignment_error ,
+            o_write_out_of_address_range_error => l_ram_write_out_of_address_range_error 
 
-            i_request => l_request,
-            i_addr => l_addr,
-            i_read_width => l_read_width,
-
-            o_data => l_data,
-            o_data_ready => l_data_ready,
-            o_alignment_error => l_alignment_error,
-            o_out_of_address_range_error => l_out_of_address_range_error
             );
 
     clock_gen: process is
@@ -128,92 +178,272 @@ begin
         write(log_line,get_string("Start program"));
         writeline(f_logger,log_line);
 
+        l_rom_request <= '0';
+
         wait for 10 ns;
 
         l_reset <= '1';
-        l_request <= '0';
         wait for 30 ns;
         l_reset <= '0';
 
-        wait until l_mem_rom_reset_done = '1';
-        -- wait until l_clock = '1';
-        wait for 10 ns;
-        l_addr <= x"10000008";
-        l_read_width <= c_memory_access_32_bit;
-        l_request <= '1';
-        wait for 10 ns;
-        l_request <= '0';
-        wait for 30 ns;
+        wait until l_rom_mem_rom_reset_done = '1';
 
-        l_addr <= x"10000001";
-        l_read_width <= c_memory_access_32_bit;
-        l_request <= '1';
-        wait for 10 ns;
-        l_request <= '0';
-        wait for 30 ns;
+        -- Write the RAM
+        wait until l_clock = '1';
+        --wait for 10 ns;
+        l_ram_write_addr <= x"20000008";
+        l_ram_write_width <= c_memory_access_32_bit;
+        l_ram_write_data <= x"01001011";
+        l_ram_write_request <= '1';
+        loop
+            wait for 10 ns;
+            exit when l_ram_write_data_ready;
+        end loop;
 
-        l_addr <= x"10000000";
-        l_read_width <= c_memory_access_32_bit;
-        l_request <= '1';
-        wait for 10 ns;
-        l_request <= '0';
-        wait for 30 ns;
+        --wait for 10 ns;
+        l_ram_write_addr <= x"20000001";
+        l_ram_write_width <= c_memory_access_32_bit;
+        l_ram_write_data <= x"01001011";
+        l_ram_write_request <= '1';
+        loop
+            wait for 10 ns;
+            exit when l_ram_write_data_ready;
+        end loop;
 
-        l_request <= '1';
-        l_addr <= x"10000000";
-        l_read_width <= c_memory_access_16_bit;
+
         wait for 10 ns;
-        l_request <= '0';
-        wait for 30 ns;
+        l_ram_write_addr <= x"20000000";
+        l_ram_write_width <= c_memory_access_8_bit;
+        l_ram_write_data <= x"02002022";
+        l_ram_write_request <= '1';
+        loop
+            wait for 10 ns;
+            exit when l_ram_write_data_ready;
+        end loop;
+
+        l_ram_write_addr <= x"20000001";
+        l_ram_write_width <= c_memory_access_8_bit;
+        l_ram_write_data <= x"02002020";
+        l_ram_write_request <= '1';
+        loop
+            wait for 10 ns;
+            exit when l_ram_write_data_ready;
+        end loop;
+
+        l_ram_write_addr <= x"20000002";
+        l_ram_write_width <= c_memory_access_8_bit;
+        l_ram_write_data <= x"02002002";
+        l_ram_write_request <= '1';
+        loop
+            wait for 10 ns;
+            exit when l_ram_write_data_ready;
+        end loop;
+
+        l_ram_write_addr <= x"20000003";
+        l_ram_write_width <= c_memory_access_8_bit;
+        l_ram_write_data <= x"02002012";
+        l_ram_write_request <= '1';
+        loop
+            wait for 10 ns;
+            exit when l_ram_write_data_ready;
+        end loop;
+
+        l_ram_write_addr <= x"20000004";
+        l_ram_write_width <= c_memory_access_16_bit;
+        l_ram_write_data <= x"03003033";
+        l_ram_write_request <= '1';
+        loop
+            wait for 10 ns;
+            exit when l_ram_write_data_ready;
+        end loop;
+
+        l_ram_write_addr <= x"20000005";
+        l_ram_write_width <= c_memory_access_16_bit;
+        l_ram_write_data <= x"03003023";
+        l_ram_write_request <= '1';
+        loop
+            wait for 10 ns;
+            exit when l_ram_write_data_ready;
+        end loop;
+
+        l_ram_write_addr <= x"20000006";
+        l_ram_write_width <= c_memory_access_16_bit;
+        l_ram_write_data <= x"03003023";
+        l_ram_write_request <= '1';
+        loop
+            wait for 10 ns;
+            exit when l_ram_write_data_ready;
+        end loop;
+
+        -- Read from the RAM
         
-        l_request <= '1';
-        l_addr <= x"10000002";
-        l_read_width <= c_memory_access_16_bit;
-        wait for 10 ns;
-        l_request <= '0';
-        wait for 30 ns;
+        wait until l_clock = '1';
+        --wait for 10 ns;
+        l_ram_read_addr <= x"20000008";
+        l_ram_read_width <= c_memory_access_32_bit;
+        l_ram_read_request <= '1';
+        loop
+            wait for 10 ns;
+            exit when l_ram_read_data_ready;
+        end loop;
+
+        l_ram_read_addr <= x"20000001";
+        l_ram_read_width <= c_memory_access_32_bit;
+        l_ram_read_request <= '1';
+        loop
+            wait for 10 ns;
+            exit when l_ram_read_data_ready;
+        end loop;
+        l_ram_read_request <= '0';
+        wait until l_ram_read_data_ready = '0';
+
+        l_ram_read_addr <= x"20000000";
+        l_ram_read_width <= c_memory_access_32_bit;
+        l_ram_read_request <= '1';
+        wait until l_ram_read_data_ready = '1';
+        l_ram_read_request <= '0';
+        wait until l_ram_read_data_ready = '0';
+
+        l_ram_read_request <= '1';
+        l_ram_read_addr <= x"20000000";
+        l_ram_read_width <= c_memory_access_16_bit;
+        wait until l_ram_read_data_ready = '1';
+        l_ram_read_request <= '0';
+        wait until l_ram_read_data_ready = '0';
         
-        l_request <= '1';
-        l_addr <= x"10000001";
-        l_read_width <= c_memory_access_16_bit;
-        wait for 10 ns;
-        l_request <= '0';
-        wait for 30 ns;
+        l_ram_read_request <= '1';
+        l_ram_read_addr <= x"20000002";
+        l_ram_read_width <= c_memory_access_16_bit;
+        wait until l_ram_read_data_ready = '1';
+        l_ram_read_request <= '0';
+        wait until l_ram_read_data_ready = '0';
+        
+        l_ram_read_request <= '1';
+        l_ram_read_addr <= x"20000001";
+        l_ram_read_width <= c_memory_access_16_bit;
+        wait until l_ram_read_data_ready = '1';
+        l_ram_read_request <= '0';
+        wait until l_ram_read_data_ready = '0';
 
-        l_request <= '1';
-        l_addr <= x"10000000";
-        l_read_width <= c_memory_access_8_bit;
-        wait for 10 ns;
-        l_request <= '0';
-        wait for 30 ns;
+        l_ram_read_request <= '1';
+        l_ram_read_addr <= x"20000000";
+        l_ram_read_width <= c_memory_access_8_bit;
+        wait until l_ram_read_data_ready = '1';
+        l_ram_read_request <= '0';
+        wait until l_ram_read_data_ready = '0';
 
-        l_request <= '1';
-        l_addr <= x"10000001";
-        l_read_width <= c_memory_access_8_bit;
-        wait for 10 ns;
-        l_request <= '0';
-        wait for 30 ns;
+        l_ram_read_request <= '1';
+        l_ram_read_addr <= x"20000001";
+        l_ram_read_width <= c_memory_access_8_bit;
+        wait until l_ram_read_data_ready = '1';
+        l_ram_read_request <= '0';
+        wait until l_ram_read_data_ready = '0';
 
-        l_request <= '1';
-        l_addr <= x"10000002";
-        l_read_width <= c_memory_access_8_bit;
-        wait for 10 ns;
-        l_request <= '0';
-        wait for 30 ns;
+        l_ram_read_request <= '1';
+        l_ram_read_addr <= x"20000002";
+        l_ram_read_width <= c_memory_access_8_bit;
+        wait until l_ram_read_data_ready = '1';
+        l_ram_read_request <= '0';
+        wait until l_ram_read_data_ready = '0';
 
-        l_request <= '1';
-        l_addr <= x"10000003";
-        l_read_width <= c_memory_access_8_bit;
-        wait for 10 ns;
-        l_request <= '0';
-        wait for 30 ns;
+        l_ram_read_request <= '1';
+        l_ram_read_addr <= x"20000003";
+        l_ram_read_width <= c_memory_access_8_bit;
+        wait until l_ram_read_data_ready = '1';
+        l_ram_read_request <= '0';
+        wait until l_ram_read_data_ready = '0';
 
-        l_request <= '1';
-        l_addr <= x"10000004";
-        l_read_width <= c_memory_access_8_bit;
-        wait for 10 ns;
-        l_request <= '0';
-        wait for 30 ns;
+        l_ram_read_request <= '1';
+        l_ram_read_addr <= x"20000004";
+        l_ram_read_width <= c_memory_access_8_bit;
+        wait until l_ram_read_data_ready = '1';
+        l_ram_read_request <= '0';
+        wait until l_ram_read_data_ready = '0';
+
+
+        wait until l_clock = '1';
+        --wait for 10 ns;
+        l_rom_addr <= x"10000008";
+        l_rom_read_width <= c_memory_access_32_bit;
+        l_rom_request <= '1';
+        --wait for 10 ns;
+        loop
+            wait until l_clock = '1';
+            exit when l_rom_data_ready;
+        end loop;
+
+        l_rom_addr <= x"10000001";
+        l_rom_read_width <= c_memory_access_32_bit;
+        l_rom_request <= '1';
+        loop
+            wait for 10 ns;
+            exit when l_rom_data_ready;
+        end loop;
+        l_rom_request <= '0';
+        wait until l_rom_data_ready = '0';
+
+        l_rom_addr <= x"10000000";
+        l_rom_read_width <= c_memory_access_32_bit;
+        l_rom_request <= '1';
+        wait until l_rom_data_ready = '1';
+        l_rom_request <= '0';
+        wait until l_rom_data_ready = '0';
+
+        l_rom_request <= '1';
+        l_rom_addr <= x"10000000";
+        l_rom_read_width <= c_memory_access_16_bit;
+        wait until l_rom_data_ready = '1';
+        l_rom_request <= '0';
+        wait until l_rom_data_ready = '0';
+        
+        l_rom_request <= '1';
+        l_rom_addr <= x"10000002";
+        l_rom_read_width <= c_memory_access_16_bit;
+        wait until l_rom_data_ready = '1';
+        l_rom_request <= '0';
+        wait until l_rom_data_ready = '0';
+        
+        l_rom_request <= '1';
+        l_rom_addr <= x"10000001";
+        l_rom_read_width <= c_memory_access_16_bit;
+        wait until l_rom_data_ready = '1';
+        l_rom_request <= '0';
+        wait until l_rom_data_ready = '0';
+
+        l_rom_request <= '1';
+        l_rom_addr <= x"10000000";
+        l_rom_read_width <= c_memory_access_8_bit;
+        wait until l_rom_data_ready = '1';
+        l_rom_request <= '0';
+        wait until l_rom_data_ready = '0';
+
+        l_rom_request <= '1';
+        l_rom_addr <= x"10000001";
+        l_rom_read_width <= c_memory_access_8_bit;
+        wait until l_rom_data_ready = '1';
+        l_rom_request <= '0';
+        wait until l_rom_data_ready = '0';
+
+        l_rom_request <= '1';
+        l_rom_addr <= x"10000002";
+        l_rom_read_width <= c_memory_access_8_bit;
+        wait until l_rom_data_ready = '1';
+        l_rom_request <= '0';
+        wait until l_rom_data_ready = '0';
+
+        l_rom_request <= '1';
+        l_rom_addr <= x"10000003";
+        l_rom_read_width <= c_memory_access_8_bit;
+        wait until l_rom_data_ready = '1';
+        l_rom_request <= '0';
+        wait until l_rom_data_ready = '0';
+
+        l_rom_request <= '1';
+        l_rom_addr <= x"10000004";
+        l_rom_read_width <= c_memory_access_8_bit;
+        wait until l_rom_data_ready = '1';
+        l_rom_request <= '0';
+        wait until l_rom_data_ready = '0';
 
         write(log_line,get_string("auipc   gp,0x10001"));
         writeline(f_logger,log_line);

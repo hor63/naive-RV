@@ -4,7 +4,7 @@
 # ghdl-gcc --gen-makefile --std=08 --work=cpu_register_file naive_RV
 
 GHDL?=ghdl-gcc
-GHDLFLAGS+= --std=08
+GHDLFLAGS+= --std=08 -O2
 
 # Default target
 all: naive_RV dep
