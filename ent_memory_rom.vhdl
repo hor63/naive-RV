@@ -11,6 +11,21 @@ use work.pkg_memory_rom.all;
 
 entity ent_memory_rom is
     generic (
+
+        gen_mem_rom_start_address: unsigned (31 downto 0) := x"10000000";
+
+        -- The witdh of the address in bits. It implicitly defines the number of bytes of memory
+        -- The memory fills out the entire address space of the address bus defined by this constant.
+        -- Values are:
+        --  9 = 512B
+        -- 10 = 1KB
+        -- 11 = 2KB
+        -- 12 = 4KB
+        -- 13 = 8KB
+        -- 14 = 16KB
+        -- and so forth
+        gen_addr_width: natural := 12;
+        gen_base_addr: t_cpu_word := x"1000_0000";
         gen_hex_file: string := "./test.hex"
     );
 
@@ -33,7 +48,13 @@ entity ent_memory_rom is
 end ent_memory_rom;
 
 architecture rtl of ent_memory_rom is
+    constant c_memory_word_bytes: natural := 2;
+    constant c_memory_word_width: natural := c_memory_word_bytes * 8;
+
+    constant c_mem_rom_num_bytes: natural := 2**gen_addr_width;
     constant c_num_memory_words: natural := c_mem_rom_num_bytes*(XLEN/c_memory_word_width);
+    
+    subtype t_memory_word is unsigned(c_memory_word_width-1 downto 0);
 
     type t_status is (L_RESET,L_IDLE,L_GET_FIRST_MEM_WORD,L_DONE);
 
@@ -109,7 +130,7 @@ architecture rtl of ent_memory_rom is
         case u_byte is
             when x"00" => -- data
                 mem_array_addr := ext_addr & address;
-                mem_array_addr := mem_array_addr - c_mem_rom_start_address;
+                mem_array_addr := mem_array_addr - gen_mem_rom_start_address;
 
                 for i in 0 to len_record-1 loop
                     mem_array_index := to_integer(mem_array_addr (31 downto 1));
@@ -210,7 +231,7 @@ begin
                     if i_request
                     then
 
-                        mem_array_addr := i_addr - c_mem_rom_start_address;
+                        mem_array_addr := i_addr - gen_mem_rom_start_address;
                         mem_array_index := to_integer(mem_array_addr (31 downto 1));
 
                         case i_read_width is

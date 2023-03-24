@@ -8,12 +8,6 @@ use work.pkg_cpu_register_file.all;
 
 package pkg_memory_rom is
 
-    constant c_memory_word_bytes: natural := 2;
-    constant c_memory_word_width: natural := c_memory_word_bytes * 8;
-    constant c_mem_rom_num_bytes: natural := 2*1024;
-    constant c_mem_rom_start_address: unsigned (31 downto 0) := x"10000000";
-
-    subtype t_memory_word is unsigned(c_memory_word_width-1 downto 0);
 
     component ent_memory_rom
     is
