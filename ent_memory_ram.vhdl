@@ -11,14 +11,25 @@ use work.pkg_memory_ram.all;
 
 entity ent_memory_ram is
     generic (
-        gen_hex_file: string := "./test.hex"
+        -- The witdh of the address in bits. It implicitly defines the number of bytes of memory
+        -- The memory fills out the entire address space of the address bus defined by this constant.
+        -- Values are:
+        --  9 = 512B
+        -- 10 = 1KB
+        -- 11 = 2KB
+        -- 12 = 4KB
+        -- 13 = 8KB
+        -- 14 = 16KB
+        -- and so forth
+        gen_addr_width: natural := 12
     );
 
     port ( 
         i_clock: in std_logic;
 
         -- the read interface section
-        i_read_request: in std_logic;
+        i_read_addr_valid: in std_logic;
+        o_read_addr_ready: out std_logic;
         i_read_addr:    in t_cpu_word;
         i_read_width: in enu_memory_access_width;
         o_read_data: out t_cpu_word;
@@ -73,7 +84,7 @@ begin
 
             case l_read_status is
             when L_IDLE | L_DONE =>
-                if i_read_request
+                if i_read_addr_valid
                 then
 
                     mem_array_addr := i_read_addr - c_mem_ram_start_address;

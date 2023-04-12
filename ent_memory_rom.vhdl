@@ -12,6 +12,10 @@ use work.pkg_memory_rom.all;
 entity ent_memory_rom is
     generic (
 
+        --! \brief This start address is *only* needed for reading a HEX file into the ROM.
+        --!
+        --! At run time the ROM is addressed directly by the memory controller wich takes care of directly addressing
+        --! ROM and RAM addresses within the respective modules.
         gen_mem_rom_start_address: unsigned (31 downto 0) := x"10000000";
 
         -- The witdh of the address in bits. It implicitly defines the number of bytes of memory
@@ -24,25 +28,27 @@ entity ent_memory_rom is
         -- 13 = 8KB
         -- 14 = 16KB
         -- and so forth
-        gen_addr_width: natural := 12;
-        gen_base_addr: t_cpu_word := x"1000_0000";
+        gen_addr_width: natural := 11;
+
         gen_hex_file: string := "./test.hex"
     );
 
     port ( 
         i_clock: in std_logic;
         
-        i_reset: in std_logic;
-        o_reset_done: out std_logic;
+        i_reset_valid: in std_logic;
+        o_reset_ready: out std_logic;
         
-        i_request: in std_logic;
-        i_addr:    in t_cpu_word;
+        i_read_addr_valid: in std_logic;
+        o_read_addr_ready: out std_logic;
+        i_read_addr:    in unsigned(gen_addr_width-1 downto 0);
         i_read_width: in enu_memory_access_width;
-        
+
+
         o_data: out t_cpu_word;
-        o_data_ready: out std_logic;
-        o_alignment_error: out std_logic;
-        o_out_of_address_range_error: out std_logic
+        o_data_valid: out std_logic;
+        i_data_ready: in std_logic;
+        o_alignment_error: out std_logic
         );
 
 end ent_memory_rom;
@@ -60,12 +66,32 @@ architecture rtl of ent_memory_rom is
 
     type t_mem_array is array (c_num_memory_words-1 downto 0) of t_memory_word;
 
-    signal l_mem_array: t_mem_array := (others => x"0000");
+    -- the registers within this architecture
+    signal r_mem_array: t_mem_array := (others => x"0000");
     
-    signal l_status:t_status := L_IDLE;
+    signal r_status:t_status := L_IDLE;
 
-    signal l_mem_array_addr: unsigned (29 downto 0); -- Only on 4-byte boundaries
+    signal r_mem_array_addr: unsigned (gen_addr_width-3 downto 0); -- Only on 4-byte boundaries
+    signal r_out_word: t_memory_word := (others => '0');
+
+    signal r_data: t_cpu_word  := (others => '0');
+    signal r_data_valid: std_logic := '0';
+    signal r_alignment_error: std_logic := '0';
+
+    -- intermediates which store the results of the combinatoric process
+    -- until they are copied into the outputs on the rising clock edge
+    -- note, these are not registers but driven real-time by combinatoric logic.
+    signal l_reset_ready: std_logic;
+
+    signal l_read_addr_ready: std_logic;
+
+    signal l_data: t_cpu_word;
+    signal l_data_valid: std_logic;
+    signal l_alignment_error: std_logic;
+    signal l_status:t_status;
+    signal l_mem_array_addr: unsigned (gen_addr_width-3 downto 0); -- Only on 4-byte boundaries
     signal l_out_word: t_memory_word;
+
 
     procedure clear_memory (signal mem_array: out t_mem_array ) is
     begin
@@ -108,7 +134,10 @@ architecture rtl of ent_memory_rom is
             exit when c = ':';
         end loop;
 
-        checksum := x"0000";
+        checksum := x"0000";        -- variable l_data_ready: std_logic;
+        -- variable l_alignment_error: std_logic;
+
+
 
         -- first byte is the record length
         read_byte_hex (u_byte,hex_line);
@@ -131,7 +160,6 @@ architecture rtl of ent_memory_rom is
             when x"00" => -- data
                 mem_array_addr := ext_addr & address;
                 mem_array_addr := mem_array_addr - gen_mem_rom_start_address;
-
                 for i in 0 to len_record-1 loop
                     mem_array_index := to_integer(mem_array_addr (31 downto 1));
                     read_byte_hex (u_byte,hex_line);
@@ -146,7 +174,7 @@ architecture rtl of ent_memory_rom is
                     mem_array_addr := mem_array_addr + 1;
 
                 end loop;
-            when x"01" => -- data
+            when x"01" => -- end of file. Stop reading. You are finished.
                 end_file := true;
                 return;
             when x"02" => -- extended segment address
@@ -180,6 +208,7 @@ architecture rtl of ent_memory_rom is
 
         file_open(hexfile,gen_hex_file,read_mode);
 
+
         while (not end_file)
         loop
             readline(hexfile,hex_line);
@@ -197,98 +226,127 @@ architecture rtl of ent_memory_rom is
 
 begin
 
-    process  ( i_clock) is
-        -- variable l_data_ready: std_logic;
-        -- variable l_alignment_error: std_logic;
-    
-        variable mem_array_addr: unsigned (31 downto 0);
+    -- Copy the internally stored values to the outputs immediately
+    o_data <= r_data;
+    o_data_valid <= r_data_valid;
+    o_alignment_error <= r_alignment_error;
+
+
+    -- All the combinatoric logic is in here.
+    -- The clock only triggers copying the processed stuff from the internal intermediates
+    -- into the outputs and updates the status machine status
+    process  (
+
+        i_reset_valid, i_read_addr_valid, i_read_addr,
+        r_status, r_mem_array_addr, r_out_word
+    ) is
+        variable mem_array_addr: unsigned (gen_addr_width-1 downto 0);
         variable mem_array_index: integer;
+        variable device_free: boolean;
     begin
-    
+
+        device_free := false;
+
+        -- ensure that no latches are being generated.
+        l_reset_ready <= '0';
+        l_read_addr_ready <= '0';
+        l_data <= r_data;
+        l_data_valid <= r_data_valid;
+        l_alignment_error <= r_alignment_error;
+        l_status <= r_status;
+        l_mem_array_addr <= r_mem_array_addr;
+        l_out_word <= r_out_word;
+
+        -- Reset circuit first
+        if i_reset_valid
+        then
+            if r_status /= L_RESET
+            then
+                l_status <= L_RESET;
+                load_memory (r_mem_array);
+            end if;
+        else -- if i_reset_valid
+            case r_status is
+            when  L_RESET =>
+                l_reset_ready <= '1';
+                l_status <= L_IDLE;
+            when L_DONE =>
+                if i_data_ready
+                then
+                    device_free := true;
+                    l_status <= L_IDLE;
+                end if;
+            when L_IDLE =>
+                device_free := true;
+            when L_GET_FIRST_MEM_WORD =>
+                l_data_valid <= '1';
+                l_data <= r_mem_array(to_integer(r_mem_array_addr & b"1")) & r_out_word;
+                l_status <= L_DONE;
+            end case; -- case r_status
+        end if; -- if i_reset_valid
+
+        if device_free
+        then
+            if i_read_addr_valid
+            then
+
+                mem_array_addr := i_read_addr;
+                mem_array_index := to_integer(mem_array_addr (gen_addr_width-1 downto 1));
+
+                case i_read_width is
+                    when c_memory_access_8_bit =>
+                        if mem_array_addr(0) = '1'
+                        then
+                            l_data <= x"000000" & r_mem_array(mem_array_index)(15 downto 8);
+                        else
+                            l_data <= x"000000" & r_mem_array(mem_array_index)(7 downto 0);
+                        end if;
+                        l_data_valid <= '1';
+                        l_status <= L_DONE;
+                    when c_memory_access_16_bit =>
+                        -- check alignment
+                        if mem_array_addr(0) /= '0'
+                        then
+                            l_alignment_error <= '1';
+                            l_data <= x"00000000";
+                        else
+                            l_data <= x"0000" & r_mem_array(mem_array_index);
+                        end if;
+                        o_data_valid <= '1';
+                        l_status <= L_DONE;
+                    when c_memory_access_32_bit =>
+                        -- check alignment
+                        if mem_array_addr(1 downto 0) /= b"00"
+                        then
+                            l_data_valid <= '1';
+                            l_alignment_error <= '1';
+                            l_data <= x"00000000";
+                            l_status <= L_DONE;
+                        else
+                            l_status <= L_GET_FIRST_MEM_WORD;
+                            l_out_word <= r_mem_array(mem_array_index);
+                            l_mem_array_addr <= mem_array_addr(gen_addr_width-1 downto 2);
+                        end if;
+                end case;
+            end if; -- if i_read_addr_valid
+        end if;
+    end process;
+
+    process  ( i_clock) is
+    begin
+
         if (rising_edge(i_clock))
         then
 
-            -- Reset circuit first
-            if i_reset
-            then
-                if l_status /= L_RESET
-                then
-                    o_reset_done <= '0';
-                    l_status <= L_RESET;
-                    o_data <= (others => '0');
-                    o_data_ready <= '0';
-                    o_alignment_error <= '0';
-                    o_out_of_address_range_error <= '0';
-                    
-                    load_memory (l_mem_array);
-                end if;
-            else -- if i_reset
-                case l_status is
-                when  L_RESET =>
-                    o_reset_done <= '1';
-                    l_status <= L_IDLE;
-                when L_IDLE | L_DONE =>
-                    if i_request
-                    then
+        o_reset_ready <= l_reset_ready;
+        o_read_addr_ready <= l_read_addr_ready;
+        r_data <= l_data;
+        r_data_valid <= l_data_valid;
+        r_alignment_error <= l_alignment_error;
+        r_status <= l_status;
+        r_mem_array_addr <= l_mem_array_addr;
+        r_out_word <= l_out_word;
 
-                        mem_array_addr := i_addr - gen_mem_rom_start_address;
-                        mem_array_index := to_integer(mem_array_addr (31 downto 1));
-
-                        case i_read_width is
-                            when c_memory_access_8_bit =>
-                                if mem_array_addr(0) = '1'
-                                then
-                                    o_data <= x"000000" & l_mem_array(mem_array_index)(15 downto 8);
-                                else
-                                    o_data <= x"000000" & l_mem_array(mem_array_index)(7 downto 0);
-                                end if;
-                                o_data_ready <= '1';
-                                o_alignment_error <= '0';
-                                l_status <= L_DONE;
-                            when c_memory_access_16_bit =>
-                                -- check alignment
-                                if mem_array_addr(0) /= '0'
-                                then
-                                    o_alignment_error <= '1';
-                                    o_data <= x"00000000";
-                                else
-                                    o_alignment_error <= '0';
-                                    o_data <= x"0000" & l_mem_array(mem_array_index);
-                                end if;
-                                o_data_ready <= '1';
-                                l_status <= L_DONE;
-                            when c_memory_access_32_bit =>
-                                -- check alignment
-                                if mem_array_addr(1 downto 0) /= b"00"
-                                then
-                                    o_data_ready <= '1';
-                                    o_alignment_error <= '1';
-                                    o_data <= x"00000000";
-                                    l_status <= L_DONE;
-                                else
-                                    o_data_ready <= '0';
-                                    o_alignment_error <= '0';
-                                    l_status <= L_GET_FIRST_MEM_WORD;
-                                    l_out_word <= l_mem_array(mem_array_index);
-                                    l_mem_array_addr <= mem_array_addr(31 downto 2);
-                                end if;
-                        end case;
-                    else -- if i_request
-                        if l_status = L_DONE
-                        then
-                            l_status <= L_IDLE;
-                            o_data_ready <= '0';
-                            o_alignment_error <= '0';
-                            o_data <= x"00000000";
-                        end if;
-                    end if; -- if i_request
-                when L_GET_FIRST_MEM_WORD =>
-                    o_data_ready <= '1';
-                    o_data <= l_mem_array(to_integer(l_mem_array_addr & b"1")) & l_out_word;
-                    l_status <= L_DONE;
-                end case; -- case l_status
-            end if; -- if i_reset
-        
         end if;  -- if (rising_edge(i_clock))
     
     end process;
