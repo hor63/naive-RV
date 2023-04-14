@@ -21,7 +21,7 @@ entity ent_memory_ram is
         -- 13 = 8KB
         -- 14 = 16KB
         -- and so forth
-        gen_addr_width: natural := 12
+        gen_addr_width: natural -- := 12
     );
 
     port ( 

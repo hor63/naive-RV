@@ -17,29 +17,43 @@ package pkg_memory_ram is
 
     component ent_memory_ram
     is
-        port (
-            i_clock: in std_logic;
+    generic (
+        -- The witdh of the address in bits. It implicitly defines the number of bytes of memory
+        -- The memory fills out the entire address space of the address bus defined by this constant.
+        -- Values are:
+        --  9 = 512B
+        -- 10 = 1KB
+        -- 11 = 2KB
+        -- 12 = 4KB
+        -- 13 = 8KB
+        -- 14 = 16KB
+        -- and so forth
+        gen_addr_width: natural -- := 12
+    );
 
-            -- the read interface section
-            i_read_request: in std_logic;
-            i_read_addr:    in t_cpu_word;
-            i_read_width: in enu_memory_access_width;
-            o_read_data: out t_cpu_word;
-            o_read_data_ready: out std_logic;
-            o_read_alignment_error: out std_logic;
-            o_read_out_of_address_range_error: out std_logic;
-            
-            -- the write interface section
-            i_write_request: in std_logic;
-            i_write_addr:    in t_cpu_word;
-            i_write_width: in enu_memory_access_width;
-            i_write_data: in t_cpu_word;
-            
-            o_write_data_ready: out std_logic;
-            o_write_alignment_error: out std_logic;
-            o_write_out_of_address_range_error: out std_logic
+    port (
+        i_clock: in std_logic;
 
-            );
+        -- the read interface section
+        i_read_addr_valid: in std_logic;
+        o_read_addr_ready: out std_logic;
+        i_read_addr:    in t_cpu_word;
+        i_read_width: in enu_memory_access_width;
+        o_read_data: out t_cpu_word;
+        o_read_data_ready: out std_logic;
+        o_read_alignment_error: out std_logic;
+        o_read_out_of_address_range_error: out std_logic;
+
+        -- the write interface section
+        i_write_request: in std_logic;
+        i_write_addr:    in t_cpu_word;
+        i_write_width: in enu_memory_access_width;
+        i_write_data: in t_cpu_word;
+
+        o_write_data_ready: out std_logic;
+        o_write_alignment_error: out std_logic;
+        o_write_out_of_address_range_error: out std_logic
+        );
     end component ent_memory_ram;
 
 end pkg_memory_ram;
