@@ -16,7 +16,7 @@ entity ent_memory_rom is
         --!
         --! At run time the ROM is addressed directly by the memory controller wich takes care of directly addressing
         --! ROM and RAM addresses within the respective modules.
-        gen_mem_rom_start_address: unsigned (31 downto 0) := x"10000000";
+        gen_mem_rom_start_address: unsigned (31 downto 0); -- := x"10000000";
 
         -- The witdh of the address in bits. It implicitly defines the number of bytes of memory
         -- The memory fills out the entire address space of the address bus defined by this constant.
@@ -28,7 +28,7 @@ entity ent_memory_rom is
         -- 13 = 8KB
         -- 14 = 16KB
         -- and so forth
-        gen_addr_width: natural := 11;
+        gen_addr_width: natural; -- := 11;
 
         gen_hex_file: string := "./test.hex"
     );
@@ -88,6 +88,7 @@ architecture rtl of ent_memory_rom is
     signal l_data: t_cpu_word;
     signal l_data_valid: std_logic;
     signal l_alignment_error: std_logic;
+
     signal l_status:t_status;
     signal l_mem_array_addr: unsigned (gen_addr_width-3 downto 0); -- Only on 4-byte boundaries
     signal l_out_word: t_memory_word;
@@ -237,7 +238,7 @@ begin
     -- into the outputs and updates the status machine status
     process  (
 
-        i_reset_valid, i_read_addr_valid, i_read_addr,
+        i_reset_valid, i_read_addr_valid, i_read_addr,i_data_ready,
         r_status, r_mem_array_addr, r_out_word
     ) is
         variable mem_array_addr: unsigned (gen_addr_width-1 downto 0);
@@ -303,6 +304,7 @@ begin
                         end if;
                         l_data_valid <= '1';
                         l_status <= L_DONE;
+                        l_alignment_error <= '0';
                     when c_memory_access_16_bit =>
                         -- check alignment
                         if mem_array_addr(0) /= '0'
@@ -311,8 +313,9 @@ begin
                             l_data <= x"00000000";
                         else
                             l_data <= x"0000" & r_mem_array(mem_array_index);
+                            l_alignment_error <= '0';
                         end if;
-                        o_data_valid <= '1';
+                        l_data_valid <= '1';
                         l_status <= L_DONE;
                     when c_memory_access_32_bit =>
                         -- check alignment
@@ -326,7 +329,9 @@ begin
                             l_status <= L_GET_FIRST_MEM_WORD;
                             l_out_word <= r_mem_array(mem_array_index);
                             l_mem_array_addr <= mem_array_addr(gen_addr_width-1 downto 2);
+                            l_alignment_error <= '0';
                         end if;
+                        l_read_addr_ready <= '1';
                 end case;
             end if; -- if i_read_addr_valid
         end if;

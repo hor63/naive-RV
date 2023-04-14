@@ -16,7 +16,7 @@ package pkg_memory_rom is
             --!
             --! At run time the ROM is addressed directly by the memory controller wich takes care of directly addressing
             --! ROM and RAM addresses within the respective modules.
-            gen_mem_rom_start_address: unsigned (31 downto 0) := x"10000000";
+            gen_mem_rom_start_address: unsigned (31 downto 0); -- := x"10000000";
 
             -- The witdh of the address in bits. It implicitly defines the number of bytes of memory
             -- The memory fills out the entire address space of the address bus defined by this constant.
@@ -28,7 +28,7 @@ package pkg_memory_rom is
             -- 13 = 8KB
             -- 14 = 16KB
             -- and so forth
-            gen_addr_width: natural := 11;
+            gen_addr_width: natural; -- := 11;
 
             gen_hex_file: string := "./test.hex"
         );
