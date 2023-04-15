@@ -264,22 +264,35 @@ begin
             if r_status /= L_RESET
             then
                 l_status <= L_RESET;
+                l_data_valid <= '0';
+                l_alignment_error <= '0';
+                l_out_word <= (others => '0');
+                l_mem_array_addr <= (others => '0');
+                l_data <= (others => '0');
                 load_memory (r_mem_array);
             end if;
+            l_reset_ready <= '1';
         else -- if i_reset_valid
             case r_status is
             when  L_RESET =>
-                l_reset_ready <= '1';
+                l_reset_ready <= '0';
                 l_status <= L_IDLE;
             when L_DONE =>
+                -- wait until the reader has consumed the data
+                -- If the reader is not ready keep the entity occupied,
+                -- and so not accept new read requests.
                 if i_data_ready
                 then
                     device_free := true;
                     l_status <= L_IDLE;
+                    l_data_valid <= '0';
+                    l_data <= (others => '0');
                 end if;
             when L_IDLE =>
                 device_free := true;
             when L_GET_FIRST_MEM_WORD =>
+                -- All checks have passed in the previous cycle.
+                -- Finish the read process directly here.
                 l_data_valid <= '1';
                 l_data <= r_mem_array(to_integer(r_mem_array_addr & b"1")) & r_out_word;
                 l_status <= L_DONE;
@@ -292,10 +305,15 @@ begin
             then
 
                 mem_array_addr := i_read_addr;
+                -- Remember, the memory cells are 16-bit words.
+                -- Therefore the index into the memory array is built by stripping the LSB.
                 mem_array_index := to_integer(mem_array_addr (gen_addr_width-1 downto 1));
 
                 case i_read_width is
                     when c_memory_access_8_bit =>
+                        -- 8-bit access always works.
+                        -- Depending on the LSB of the address I need to pick the upper or
+                        -- lower byte from the 16-bit memory word.
                         if mem_array_addr(0) = '1'
                         then
                             l_data <= x"000000" & r_mem_array(mem_array_index)(15 downto 8);
@@ -306,6 +324,11 @@ begin
                         l_status <= L_DONE;
                         l_alignment_error <= '0';
                     when c_memory_access_16_bit =>
+                        -- 16-bit access is a bit more complex because
+                        -- I need to check the alignment.
+                        -- On the other side when the alignment fits
+                        -- I can simply copy the memory word at once.
+
                         -- check alignment
                         if mem_array_addr(0) /= '0'
                         then
@@ -318,6 +341,13 @@ begin
                         l_data_valid <= '1';
                         l_status <= L_DONE;
                     when c_memory_access_32_bit =>
+                        -- This is the most complex case.
+                        -- I need to check the alignment
+                        -- and the access is split over two cycles,
+                        -- I need to store the memory word from this cycle in a register
+                        -- for the next cycle which will concatenate the saved value
+                        -- and the next memory word into the 32-bit output.
+
                         -- check alignment
                         if mem_array_addr(1 downto 0) /= b"00"
                         then
@@ -339,21 +369,19 @@ begin
 
     process  ( i_clock) is
     begin
-
         if (rising_edge(i_clock))
         then
-
-        o_reset_ready <= l_reset_ready;
-        o_read_addr_ready <= l_read_addr_ready;
-        r_data <= l_data;
-        r_data_valid <= l_data_valid;
-        r_alignment_error <= l_alignment_error;
-        r_status <= l_status;
-        r_mem_array_addr <= l_mem_array_addr;
-        r_out_word <= l_out_word;
-
+            -- simply copy the values over into the registers
+            -- all logic happened in the combinatorical process above.
+            o_reset_ready <= l_reset_ready;
+            o_read_addr_ready <= l_read_addr_ready;
+            r_data <= l_data;
+            r_data_valid <= l_data_valid;
+            r_alignment_error <= l_alignment_error;
+            r_status <= l_status;
+            r_mem_array_addr <= l_mem_array_addr;
+            r_out_word <= l_out_word;
         end if;  -- if (rising_edge(i_clock))
-    
     end process;
 
 

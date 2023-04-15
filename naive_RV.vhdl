@@ -195,10 +195,9 @@ begin
         wait for 10 ns;
 
         l_reset_valid <= '1';
-        wait for 30 ns;
-        l_reset_valid <= '0';
 
         wait until l_rom_reset_ready = '1';
+        l_reset_valid <= '0';
 
         -- Write the RAM
         wait until l_clock = '1';
