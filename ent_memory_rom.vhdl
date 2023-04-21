@@ -285,8 +285,9 @@ begin
                 then
                     device_free := true;
                     l_status <= L_IDLE;
-                    l_data_valid <= '0';
-                    l_data <= (others => '0');
+                    --l_data_valid <= '0';
+                    --l_data <= (others => '0');
+                    --l_alignment_error <= '0';
                 end if;
             when L_IDLE =>
                 device_free := true;
