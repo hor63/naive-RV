@@ -82,16 +82,25 @@ architecture rtl of ent_memory_rom is
     -- until they are copied into the outputs on the rising clock edge
     -- note, these are not registers but driven real-time by combinatoric logic.
     signal l_reset_ready: std_logic;
+    signal l_update_reset_ready: std_logic;
 
+    signal error add r_read_addr_ready;
     signal l_read_addr_ready: std_logic;
+    signal l_update_read_addr_ready: std_logic;
 
     signal l_data: t_cpu_word;
+    signal l_update_data: std_logic;
     signal l_data_valid: std_logic;
+    signal l_update_data_valid: std_logic;
     signal l_alignment_error: std_logic;
+    signal l_update_alignment_error: std_logic;
 
     signal l_status:t_status;
+    signal l_update_status: std_logic;
     signal l_mem_array_addr: unsigned (gen_addr_width-3 downto 0); -- Only on 4-byte boundaries
+    signal l_update_mem_array_addr: std_logic;
     signal l_out_word: t_memory_word;
+    signal l_update_out_word: std_logic;
 
 
     procedure clear_memory (signal mem_array: out t_mem_array ) is
@@ -250,13 +259,21 @@ begin
 
         -- ensure that no latches are being generated.
         l_reset_ready <= '0';
+        l_update_reset_ready <= '0';
         l_read_addr_ready <= '0';
+        l_update_read_addr_ready <= '0';
         l_data <= r_data;
+        l_update_data <= '0';
         l_data_valid <= r_data_valid;
+        l_update_data_valid <= '0';
         l_alignment_error <= r_alignment_error;
+        l_update_alignment_error <= '0';
         l_status <= r_status;
+        l_update_status <= '0';
         l_mem_array_addr <= r_mem_array_addr;
+        l_update_mem_array_addr <= '0';
         l_out_word <= r_out_word;
+        l_update_out_word <= '0';
 
         -- Reset circuit first
         if i_reset_valid
@@ -264,19 +281,28 @@ begin
             if r_status /= L_RESET
             then
                 l_status <= L_RESET;
+                l_update_status <= '1';
                 l_data_valid <= '0';
+                l_update_data_valid <= '1';
                 l_alignment_error <= '0';
+                l_update_alignment_error <= '1';
                 l_out_word <= (others => '0');
+                l_update_out_word <= '1';
                 l_mem_array_addr <= (others => '0');
+                l_update_mem_array_addr <= '1';
                 l_data <= (others => '0');
+                l_update_data <= '1';
                 load_memory (r_mem_array);
             end if;
             l_reset_ready <= '1';
+            l_update_reset_ready <= '1';
         else -- if i_reset_valid
             case r_status is
             when  L_RESET =>
                 l_reset_ready <= '0';
+                l_update_reset_ready <= '1';
                 l_status <= L_IDLE;
+                l_update_status <= '1';
             when L_DONE =>
                 -- wait until the reader has consumed the data
                 -- If the reader is not ready keep the entity occupied,
@@ -285,6 +311,9 @@ begin
                 then
                     device_free := true;
                     l_status <= L_IDLE;
+                    l_update_status <= '1';
+                    l_read_addr_ready <= '0';
+                    l_update_read_addr_ready <= '1';
                     --l_data_valid <= '0';
                     --l_data <= (others => '0');
                     --l_alignment_error <= '0';
@@ -297,6 +326,9 @@ begin
                 l_data_valid <= '1';
                 l_data <= r_mem_array(to_integer(r_mem_array_addr & b"1")) & r_out_word;
                 l_status <= L_DONE;
+                l_update_status <= '1';
+                l_read_addr_ready <= '0';
+                l_update_read_addr_ready <= '1';
             end case; -- case r_status
         end if; -- if i_reset_valid
 
@@ -321,9 +353,15 @@ begin
                         else
                             l_data <= x"000000" & r_mem_array(mem_array_index)(7 downto 0);
                         end if;
+                        l_update_data <= '1';
                         l_data_valid <= '1';
+                        l_update_data_valid <= '1';
                         l_status <= L_DONE;
+                        l_update_status <= '1';
                         l_alignment_error <= '0';
+                        l_update_alignment_error <= '1';
+                        l_read_addr_ready <= '1';
+                        l_update_read_addr_ready <= '1';
                     when c_memory_access_16_bit =>
                         -- 16-bit access is a bit more complex because
                         -- I need to check the alignment.
@@ -336,11 +374,17 @@ begin
                             l_alignment_error <= '1';
                             l_data <= x"00000000";
                         else
-                            l_data <= x"0000" & r_mem_array(mem_array_index);
                             l_alignment_error <= '0';
+                            l_data <= x"0000" & r_mem_array(mem_array_index);
                         end if;
+                        l_update_alignment_error <= '1';
+                        l_update_data <= '1';
                         l_data_valid <= '1';
+                        l_update_data_valid <= '1';
                         l_status <= L_DONE;
+                        l_update_status <= '1';
+                        l_read_addr_ready <= '1';
+                        l_update_read_addr_ready <= '1';
                     when c_memory_access_32_bit =>
                         -- This is the most complex case.
                         -- I need to check the alignment
@@ -357,12 +401,17 @@ begin
                             l_data <= x"00000000";
                             l_status <= L_DONE;
                         else
+                            l_data_valid <= '0';
                             l_status <= L_GET_FIRST_MEM_WORD;
                             l_out_word <= r_mem_array(mem_array_index);
                             l_mem_array_addr <= mem_array_addr(gen_addr_width-1 downto 2);
                             l_alignment_error <= '0';
                         end if;
+                        l_update_data_valid <= '1';
+                        l_update_status <= '1';
+                        l_update_alignment_error <= '1';
                         l_read_addr_ready <= '1';
+                        l_update_read_addr_ready <= '1';
                 end case;
             end if; -- if i_read_addr_valid
         end if;
