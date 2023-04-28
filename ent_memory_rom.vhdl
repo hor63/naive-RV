@@ -48,7 +48,8 @@ entity ent_memory_rom is
         o_data: out t_cpu_word;
         o_data_valid: out std_logic;
         i_data_ready: in std_logic;
-        o_alignment_error: out std_logic
+        o_alignment_error: out std_logic;
+        o_invalid_read_width: out std_logic
         );
 
 end ent_memory_rom;
@@ -74,9 +75,11 @@ architecture rtl of ent_memory_rom is
     signal r_mem_array_addr: unsigned (gen_addr_width-3 downto 0); -- Only on 4-byte boundaries
     signal r_out_word: t_memory_word := (others => '0');
 
+    signal r_read_addr_ready: std_logic := '0';
     signal r_data: t_cpu_word  := (others => '0');
     signal r_data_valid: std_logic := '0';
     signal r_alignment_error: std_logic := '0';
+    signal r_invalid_read_width: std_logic := '0';
 
     -- intermediates which store the results of the combinatoric process
     -- until they are copied into the outputs on the rising clock edge
@@ -84,7 +87,6 @@ architecture rtl of ent_memory_rom is
     signal l_reset_ready: std_logic;
     signal l_update_reset_ready: std_logic;
 
-    signal error add r_read_addr_ready;
     signal l_read_addr_ready: std_logic;
     signal l_update_read_addr_ready: std_logic;
 
@@ -94,6 +96,8 @@ architecture rtl of ent_memory_rom is
     signal l_update_data_valid: std_logic;
     signal l_alignment_error: std_logic;
     signal l_update_alignment_error: std_logic;
+    signal l_invalid_read_width: std_logic;
+    signal l_update_invalid_read_width: std_logic;
 
     signal l_status:t_status;
     signal l_update_status: std_logic;
@@ -236,11 +240,12 @@ architecture rtl of ent_memory_rom is
 
 begin
 
-    -- Copy the internally stored values to the outputs immediately
+    -- Copy the internally stored values from the registers to the outputs immediately
+    o_read_addr_ready <= r_read_addr_ready;
     o_data <= r_data;
     o_data_valid <= r_data_valid;
     o_alignment_error <= r_alignment_error;
-
+    o_invalid_read_width <= r_invalid_read_width;
 
     -- All the combinatoric logic is in here.
     -- The clock only triggers copying the processed stuff from the internal intermediates
@@ -274,6 +279,8 @@ begin
         l_update_mem_array_addr <= '0';
         l_out_word <= r_out_word;
         l_update_out_word <= '0';
+        l_invalid_read_width <= '0';
+        l_update_invalid_read_width <= '0';
 
         -- Reset circuit first
         if i_reset_valid
@@ -292,6 +299,8 @@ begin
                 l_update_mem_array_addr <= '1';
                 l_data <= (others => '0');
                 l_update_data <= '1';
+                l_invalid_read_width <= '0';
+                l_update_invalid_read_width <= '1';
                 load_memory (r_mem_array);
             end if;
             l_reset_ready <= '1';
@@ -303,6 +312,8 @@ begin
                 l_update_reset_ready <= '1';
                 l_status <= L_IDLE;
                 l_update_status <= '1';
+                l_read_addr_ready <= '1';
+                l_update_read_addr_ready <= '1';
             when L_DONE =>
                 -- wait until the reader has consumed the data
                 -- If the reader is not ready keep the entity occupied,
@@ -312,11 +323,15 @@ begin
                     device_free := true;
                     l_status <= L_IDLE;
                     l_update_status <= '1';
-                    l_read_addr_ready <= '0';
+                    l_read_addr_ready <= '1';
                     l_update_read_addr_ready <= '1';
-                    --l_data_valid <= '0';
-                    --l_data <= (others => '0');
-                    --l_alignment_error <= '0';
+                    l_data_valid <= '0';
+                    l_update_data_valid <= '1';
+                    -- l_data <= (others => '0');
+                    l_alignment_error <= '0';
+                    l_update_alignment_error <= '1';
+                    l_invalid_read_width <= '0';
+                    l_update_invalid_read_width <= '1';
                 end if;
             when L_IDLE =>
                 device_free := true;
@@ -412,7 +427,26 @@ begin
                         l_update_alignment_error <= '1';
                         l_read_addr_ready <= '1';
                         l_update_read_addr_ready <= '1';
+                    when others =>
+                        l_data <= x"00000000";
+                        l_update_data <= '1';
+                        l_data_valid <= '1';
+                        l_update_data_valid <= '1';
+                        l_status <= L_DONE;
+                        l_update_status <= '1';
+                        l_alignment_error <= '0';
+                        l_update_alignment_error <= '1';
+                        l_read_addr_ready <= '1';
+                        l_update_read_addr_ready <= '1';
+
+                        l_invalid_read_width <= '1';
+                        l_update_invalid_read_width <= '1';
                 end case;
+                
+                -- From now on I do not accept new read addresses until the consumer of data has accepted them.
+                l_read_addr_ready <= '0';
+                l_update_read_addr_ready <= '1';
+
             end if; -- if i_read_addr_valid
         end if;
     end process;
@@ -423,14 +457,30 @@ begin
         then
             -- simply copy the values over into the registers
             -- all logic happened in the combinatorical process above.
-            o_reset_ready <= l_reset_ready;
-            o_read_addr_ready <= l_read_addr_ready;
-            r_data <= l_data;
-            r_data_valid <= l_data_valid;
-            r_alignment_error <= l_alignment_error;
-            r_status <= l_status;
-            r_mem_array_addr <= l_mem_array_addr;
-            r_out_word <= l_out_word;
+            if l_update_reset_ready then
+                o_reset_ready <= l_reset_ready;
+            end if;
+            if l_update_read_addr_ready then
+                r_read_addr_ready <= l_read_addr_ready;
+            end if;
+            if l_update_data then
+                r_data <= l_data;
+            end if;
+            if l_update_data_valid then
+                r_data_valid <= l_data_valid;
+            end if;
+            if l_alignment_error then
+                r_alignment_error <= l_alignment_error;
+            end if;
+            if l_update_status then
+                r_status <= l_status;
+            end if;
+            if l_update_mem_array_addr then
+                r_mem_array_addr <= l_mem_array_addr;
+            end if;
+            if l_update_out_word then
+                r_out_word <= l_out_word;
+            end if;
         end if;  -- if (rising_edge(i_clock))
     end process;
 
