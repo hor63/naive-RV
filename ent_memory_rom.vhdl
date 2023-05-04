@@ -252,7 +252,7 @@ begin
     -- into the outputs and updates the status machine status
     process  (
 
-        i_reset_valid, i_read_addr_valid, i_read_addr,i_data_ready,
+        i_reset_valid, i_read_addr_valid, i_read_addr,i_data_ready,i_read_width,
         r_status, r_mem_array_addr, r_out_word
     ) is
         variable mem_array_addr: unsigned (gen_addr_width-1 downto 0);
@@ -267,17 +267,17 @@ begin
         l_update_reset_ready <= '0';
         l_read_addr_ready <= '0';
         l_update_read_addr_ready <= '0';
-        l_data <= r_data;
+        l_data <= (others => '0');
         l_update_data <= '0';
-        l_data_valid <= r_data_valid;
+        l_data_valid <= '0';
         l_update_data_valid <= '0';
-        l_alignment_error <= r_alignment_error;
+        l_alignment_error <= '0';
         l_update_alignment_error <= '0';
         l_status <= r_status;
         l_update_status <= '0';
-        l_mem_array_addr <= r_mem_array_addr;
+        l_mem_array_addr <= (others => '0');
         l_update_mem_array_addr <= '0';
-        l_out_word <= r_out_word;
+        l_out_word <= (others => '0');
         l_update_out_word <= '0';
         l_invalid_read_width <= '0';
         l_update_invalid_read_width <= '0';
@@ -339,7 +339,9 @@ begin
                 -- All checks have passed in the previous cycle.
                 -- Finish the read process directly here.
                 l_data_valid <= '1';
+                l_update_data_valid <= '1';
                 l_data <= r_mem_array(to_integer(r_mem_array_addr & b"1")) & r_out_word;
+                l_update_data <= '1';
                 l_status <= L_DONE;
                 l_update_status <= '1';
                 l_read_addr_ready <= '0';
@@ -414,12 +416,15 @@ begin
                             l_data_valid <= '1';
                             l_alignment_error <= '1';
                             l_data <= x"00000000";
+                            l_update_data <= '1';
                             l_status <= L_DONE;
                         else
                             l_data_valid <= '0';
                             l_status <= L_GET_FIRST_MEM_WORD;
                             l_out_word <= r_mem_array(mem_array_index);
+                            l_update_out_word <= '1';
                             l_mem_array_addr <= mem_array_addr(gen_addr_width-1 downto 2);
+                            l_update_mem_array_addr <= '1';
                             l_alignment_error <= '0';
                         end if;
                         l_update_data_valid <= '1';

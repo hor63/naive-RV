@@ -61,6 +61,7 @@ is
     signal l_rom_data_valid: std_logic;
     signal l_rom_data_ready: std_logic;
     signal l_rom_alignment_error: std_logic;
+    signal l_invalid_read_width: std_logic;
 -- end
 
 -- start interface to the RAM
@@ -140,7 +141,8 @@ begin
         o_data => l_rom_data,
         o_data_valid => l_rom_data_valid,
         i_data_ready => l_rom_data_ready,
-        o_alignment_error => l_rom_alignment_error
+        o_alignment_error => l_rom_alignment_error,
+        o_invalid_read_width => l_invalid_read_width
         );
             
     l_memory_ram: ent_memory_ram

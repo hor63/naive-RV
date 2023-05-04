@@ -48,7 +48,8 @@ package pkg_memory_rom is
             o_data: out t_cpu_word;
             o_data_valid: out std_logic;
             i_data_ready: in std_logic;
-            o_alignment_error: out std_logic
+            o_alignment_error: out std_logic;
+            o_invalid_read_width: out std_logic
             );
 
     end component ent_memory_rom;
